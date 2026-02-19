@@ -1,0 +1,222 @@
+import pool from "../configs/db.config.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/apiError.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+
+/* ======================================================
+   GET ALL TRANSACTIONS (with filters + pagination)
+====================================================== */
+const getAllTransactions = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized access");
+
+  const { startDate, endDate, page = 1, limit = 10 } = req.query;
+
+  const offset = (page - 1) * limit;
+
+  let baseQuery = `
+    FROM transactions
+    WHERE user_id = ?
+  `;
+
+  const values = [userId];
+
+  if (startDate && endDate) {
+    baseQuery += ` AND transaction_date BETWEEN ? AND ?`;
+    values.push(startDate, endDate);
+  }
+
+  // Get transactions
+  const [transactions] = await pool.execute(
+    `SELECT * ${baseQuery}
+     ORDER BY transaction_date DESC
+     LIMIT ? OFFSET ?`,
+    [...values, Number(limit), Number(offset)],
+  );
+
+  // Get summary
+  const [summaryResult] = await pool.execute(
+    `SELECT 
+      COALESCE(SUM(CASE WHEN type='income' THEN amount END),0) AS total_income,
+      COALESCE(SUM(CASE WHEN type='expense' THEN amount END),0) AS total_expense,
+      COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE -amount END),0) AS balance
+     ${baseQuery}`,
+    values,
+  );
+
+  const summary = summaryResult[0];
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        transactions,
+        summary,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+        },
+      },
+      "Transactions fetched successfully",
+    ),
+  );
+});
+
+/* ======================================================
+   GET ALL EXPENSES
+====================================================== */
+const getAllExpenses = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized access");
+
+  const { startDate, endDate } = req.query;
+
+  let query = `
+    SELECT *
+    FROM transactions
+    WHERE user_id = ?
+    AND type = 'expense'
+  `;
+
+  const values = [userId];
+
+  if (startDate && endDate) {
+    query += ` AND transaction_date BETWEEN ? AND ?`;
+    values.push(startDate, endDate);
+  }
+
+  query += ` ORDER BY transaction_date DESC`;
+
+  const [expenses] = await pool.execute(query, values);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { expenses }, "Expenses fetched successfully"));
+});
+
+/* ======================================================
+   GET ALL INCOME
+====================================================== */
+const getAllIncome = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized access");
+
+  const [income] = await pool.execute(
+    `SELECT *
+     FROM transactions
+     WHERE user_id = ?
+     AND type = 'income'
+     ORDER BY transaction_date DESC`,
+    [userId],
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { income }, "Income fetched successfully"));
+});
+
+/* ======================================================
+   GET SINGLE TRANSACTION
+====================================================== */
+const getTransactionById = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  const [rows] = await pool.execute(
+    `SELECT *
+     FROM transactions
+     WHERE id = ? AND user_id = ?`,
+    [id, userId],
+  );
+
+  if (!rows.length) throw new ApiError(404, "Transaction not found");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, rows[0], "Transaction fetched successfully"));
+});
+
+/* ======================================================
+   CREATE TRANSACTION
+====================================================== */
+const createTransaction = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+
+  const { amount, type, category, note, transaction_date } = req.body;
+
+  if (!amount || !type || !transaction_date) {
+    throw new ApiError(400, "Required fields missing");
+  }
+
+  const [result] = await pool.execute(
+    `INSERT INTO transactions
+     (user_id, amount, type, category, note, transaction_date)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [userId, amount, type, category || null, note || null, transaction_date],
+  );
+
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(
+        201,
+        { transactionId: result.insertId },
+        "Transaction created successfully",
+      ),
+    );
+});
+
+/* ======================================================
+   UPDATE TRANSACTION
+====================================================== */
+const updateTransaction = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  const { amount, type, category, note, transaction_date } = req.body;
+
+  const [result] = await pool.execute(
+    `UPDATE transactions
+     SET amount = ?, type = ?, category = ?, note = ?, transaction_date = ?
+     WHERE id = ? AND user_id = ?`,
+    [amount, type, category, note, transaction_date, id, userId],
+  );
+
+  if (result.affectedRows === 0)
+    throw new ApiError(404, "Transaction not found or not authorized");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Transaction updated successfully"));
+});
+
+/* ======================================================
+   DELETE TRANSACTION
+====================================================== */
+const deleteTransaction = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  const [result] = await pool.execute(
+    `DELETE FROM transactions
+     WHERE id = ? AND user_id = ?`,
+    [id, userId],
+  );
+
+  if (result.affectedRows === 0)
+    throw new ApiError(404, "Transaction not found or not authorized");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Transaction deleted successfully"));
+});
+
+export {
+  getAllTransactions,
+  getAllExpenses,
+  getAllIncome,
+  getTransactionById,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
+};

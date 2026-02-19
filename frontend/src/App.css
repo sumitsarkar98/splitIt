@@ -1,0 +1,73 @@
+@import url("https://fonts.googleapis.com/css2?family=Bigshot+One&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+:root {
+  /* Brand Colors */
+  --color-primary: #88c417;
+  --color-secondary: #1f2937;
+  --color-accent: #facc15;
+
+  /* Text Colors */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+
+  /* State Colors */
+  --color-active: var(--color-primary);
+  --color-inactive: #9ca3af;
+  --color-hover: #6fa010;
+
+  /* Backgrounds */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+
+  /* Fonts */
+  --font-heading: "Bigshot One", cursive;
+  --font-body: "Outfit", sans-serif;
+  --font-ui: "Poppins", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+body,
+html {
+  font-family: var(--font-ui);
+}
+.logo {
+  color: var(--color-primary);
+  font-family: var(--font-heading);
+}
+.nav-link {
+  color: var(--color-secondary);
+  transition: 0.3s ease;
+  font-family: var(--font-body);
+  letter-spacing: 1px;
+}
+
+.nav-link:hover {
+  color: var(--color-hover);
+}
+
+.nav-link.active {
+  color: var(--color-active);
+}
+
+/* width */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 2px;
+}
+
+/* track */
+::-webkit-scrollbar-track {
+  background: var(--color-primary);
+}
+
+/* thumb */
+::-webkit-scrollbar-thumb {
+  background: #ffffff;
+  border-radius: 6px;
+}
+
+/* thumb hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
