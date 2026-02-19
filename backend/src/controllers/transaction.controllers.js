@@ -35,14 +35,10 @@ const getAllTransactions = asyncHandler(async (req, res) => {
   const summary = summaryResult[0];
 
   return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        transactions,
-        summary,
-      },
-      "Transactions fetched successfully",
-    ),
+    new ApiResponse("Transactions fetched successfully", {
+      transactions,
+      summary,
+    }),
   );
 });
 
@@ -75,7 +71,7 @@ const getAllExpenses = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, { expenses }, "Expenses fetched successfully"));
+    .json(new ApiResponse("Expenses fetched successfully", { expenses }));
 });
 
 /* ======================================================
